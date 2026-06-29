@@ -9,6 +9,9 @@ from .views import (
     ConversationMessageListAPIView,
     ReplyAPIView,
     SuggestReplyAPIView,
+    AcquireLockAPIView,
+    ReleaseLockAPIView,
+    LockStatusAPIView,
 )
 urlpatterns = [
     path(
@@ -31,5 +34,18 @@ path(
     "conversations/<int:id>/suggest-reply/",
     SuggestReplyAPIView.as_view(),
     name="suggest-reply",
+),
+path(
+    "conversations/<int:id>/lock/",
+    AcquireLockAPIView.as_view(),
+),
+path(
+    "conversations/<int:id>/unlock/",
+    ReleaseLockAPIView.as_view(),
+),
+path(
+    "conversations/<int:id>/lock-status/",
+    LockStatusAPIView.as_view(),
+    name="lock-status",
 ),
 ]
