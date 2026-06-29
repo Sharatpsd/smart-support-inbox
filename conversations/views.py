@@ -1,13 +1,15 @@
-from django.shortcuts import get_object_or_404
-from analytics.tasks import analyze_sentiment
-from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
-from analytics.tasks import analyze_sentiment
+from django.shortcuts import get_object_or_404
+
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from drf_spectacular.utils import extend_schema
+
+from analytics.tasks import analyze_sentiment
 from ai_engine.services import AIReplyService
 from locks.services import ConversationLockService
 
@@ -19,6 +21,11 @@ from .serializers import (
 )
 
 
+@extend_schema(
+    tags=["Conversations"],
+    summary="List conversations",
+    description="Returns paginated conversations with search and status filtering.",
+)
 class ConversationListAPIView(generics.ListAPIView):
     queryset = Conversation.objects.all().order_by("-created_at")
     serializer_class = ConversationSerializer
@@ -33,6 +40,11 @@ class ConversationListAPIView(generics.ListAPIView):
     search_fields = ["customer_name"]
 
 
+@extend_schema(
+    tags=["Messages"],
+    summary="Conversation message history",
+    description="Returns all messages for a conversation ordered by time.",
+)
 class ConversationMessageListAPIView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
@@ -43,6 +55,11 @@ class ConversationMessageListAPIView(generics.ListAPIView):
         ).order_by("created_at")
 
 
+@extend_schema(
+    tags=["Replies"],
+    summary="Reply to a conversation",
+    description="Allows an authenticated support agent to send a reply.",
+)
 class ReplyAPIView(generics.GenericAPIView):
     serializer_class = ReplySerializer
     permission_classes = [IsAuthenticated]
@@ -50,7 +67,6 @@ class ReplyAPIView(generics.GenericAPIView):
     def post(self, request, id):
         conversation = get_object_or_404(Conversation, id=id)
 
-        # Check conversation lock
         owner = ConversationLockService.owner(id)
 
         if owner and owner != request.user.id:
@@ -61,7 +77,6 @@ class ReplyAPIView(generics.GenericAPIView):
                 status=status.HTTP_423_LOCKED,
             )
 
-        # Acquire lock
         ConversationLockService.acquire(
             id,
             request.user.id,
@@ -70,24 +85,20 @@ class ReplyAPIView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Save agent reply
         message = Message.objects.create(
             conversation=conversation,
             sender="agent",
             message=serializer.validated_data["message"],
         )
 
-        # Trigger background sentiment analysis
         try:
             if settings.CELERY_TASK_ALWAYS_EAGER:
                 analyze_sentiment(conversation.id)
             else:
                 analyze_sentiment.delay(conversation.id)
         except Exception:
-            # Fallback for development if Redis/Celery is unavailable
             analyze_sentiment(conversation.id)
 
-        # Release lock
         ConversationLockService.release(
             id,
             request.user.id,
@@ -102,6 +113,12 @@ class ReplyAPIView(generics.GenericAPIView):
             status=status.HTTP_201_CREATED,
         )
 
+
+@extend_schema(
+    tags=["AI"],
+    summary="Generate AI reply suggestion",
+    description="Returns a rule-based AI suggestion based on the customer's message.",
+)
 class SuggestReplyAPIView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -117,6 +134,11 @@ class SuggestReplyAPIView(generics.GenericAPIView):
         )
 
 
+@extend_schema(
+    tags=["Locks"],
+    summary="Acquire conversation lock",
+    description="Locks a conversation for the current support agent.",
+)
 class AcquireLockAPIView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -134,6 +156,11 @@ class AcquireLockAPIView(generics.GenericAPIView):
         )
 
 
+@extend_schema(
+    tags=["Locks"],
+    summary="Release conversation lock",
+    description="Releases the conversation lock owned by the current support agent.",
+)
 class ReleaseLockAPIView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -148,6 +175,13 @@ class ReleaseLockAPIView(generics.GenericAPIView):
                 "released": released,
             }
         )
+
+
+@extend_schema(
+    tags=["Locks"],
+    summary="Get conversation lock status",
+    description="Returns the current lock status and lock owner.",
+)
 class LockStatusAPIView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -161,4 +195,3 @@ class LockStatusAPIView(generics.GenericAPIView):
                 "owner": owner,
             }
         )
-        
