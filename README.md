@@ -1,4 +1,27 @@
 # Smart Customer Support Inbox Engine
+ Screenshots
+
+## 1. Swagger UI
+
+![Swagger UI](screenshots/swigger_ui.png)
+
+---
+
+## 2. JWT Authentication
+
+![JWT Authentication](screenshots/Authentication%20(JWT).png)
+
+---
+
+## 3. Conversation Management
+
+![Conversation Management](screenshots/Conversation%20Management.png)
+
+---
+
+## 4. Customer Support Conversation
+
+![Customer Support Conversation](screenshots/customer%20support%20conversation.png)
 
 Backend Technical Assessment built with **Django**, **Django REST Framework**, **JWT Authentication**, **Celery**, and **Redis**.
 
@@ -173,30 +196,6 @@ http://127.0.0.1:8000/redoc/
 ```
 
 ---
-
-# Screenshots
-
-## 1. Swagger UI
-
-![Swagger UI](screenshots/swigger_ui.png)
-
----
-
-## 2. JWT Authentication
-
-![JWT Authentication](screenshots/Authentication%20(JWT).png)
-
----
-
-## 3. Conversation Management
-
-![Conversation Management](screenshots/Conversation%20Management.png)
-
----
-
-## 4. Customer Support Conversation
-
-![Customer Support Conversation](screenshots/customer%20support%20conversation.png)
 
 ---
 
